@@ -1,0 +1,105 @@
+﻿using EFCore_Relationships.BLL.Contracts;
+using EFCore_Relationships.DAL.Interfaces;
+using EFCore_Relationships.Models.DTOs;
+using EFCore_Relationships.Models.Mappers;
+
+namespace EFCore_Relationships.BLL.Services;
+
+/// <summary>
+/// Product service implementation containing business logic
+/// </summary>
+public class ProductService : IProductService
+{
+    private readonly IProductRepository _productRepository;
+
+    public ProductService(IProductRepository productRepository)
+    {
+        _productRepository = productRepository;
+    }
+
+    #region Commands
+
+    /// <summary>
+    /// Add a new product
+    /// </summary>
+    public async Task AddProductAsync(ProductDto dto)
+    {
+        var entity = ProductMapper.ToEntity(dto);
+        await _productRepository.AddAsync(entity);
+    }
+
+    /// <summary>
+    /// Update an existing product
+    /// </summary>
+    public async Task UpdateProductAsync(ProductDto dto)
+    {
+        var existing = await _productRepository.GetByIdAsync(dto.ProductId);
+        
+        if (existing == null)
+            throw new KeyNotFoundException($"Product with ID {dto.ProductId} not found");
+
+        ProductMapper.UpdateEntity(existing, dto);
+        await _productRepository.UpdateAsync(existing);
+    }
+
+    /// <summary>
+    /// Delete a product by ID
+    /// </summary>
+    public async Task DeleteProductAsync(int id)
+    {
+        var existing = await _productRepository.GetByIdAsync(id);
+        
+        if (existing == null)
+            throw new KeyNotFoundException($"Product with ID {id} not found");
+
+        await _productRepository.DeleteAsync(id);
+    }
+
+    #endregion
+
+    #region Queries
+
+    /// <summary>
+    /// Get all products
+    /// </summary>
+    public async Task<List<ProductDto>> GetAllProductsAsync()
+    {
+        var products = await _productRepository.GetAllAsync();
+        return products.Select(ProductMapper.ToDto).ToList();
+    }
+
+    /// <summary>
+    /// Get a product by ID
+    /// </summary>
+    public async Task<ProductDto?> GetProductByIdAsync(int id)
+    {
+        var product = await _productRepository.GetByIdAsync(id);
+        return product != null ? ProductMapper.ToDto(product) : null;
+    }
+
+    /// <summary>
+    /// Get products within a specific price range
+    /// </summary>
+    public async Task<List<ProductDto>> GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
+    {
+        if (minPrice < 0 || maxPrice < 0)
+            throw new ArgumentException("Price values cannot be negative");
+
+        if (minPrice > maxPrice)
+            throw new ArgumentException("Minimum price cannot be greater than maximum price");
+
+        var products = await _productRepository.GetProductsByPriceRangeAsync(minPrice, maxPrice);
+        return products.Select(ProductMapper.ToDto).ToList();
+    }
+
+    /// <summary>
+    /// Get all products that are in stock
+    /// </summary>
+    public async Task<List<ProductDto>> GetProductsInStockAsync()
+    {
+        var products = await _productRepository.GetProductsInStockAsync();
+        return products.Select(ProductMapper.ToDto).ToList();
+    }
+
+    #endregion
+}
