@@ -14,10 +14,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Register Generic Repository (optional - only if you need to inject it directly)
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-// Register Specific Repositories
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-
 // Register Services (BLL)
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
@@ -50,9 +46,6 @@ using (var scope = app.Services.CreateScope())
     // Disable WAL mode - write directly to main DB file
     dbContext.Database.ExecuteSqlRaw("PRAGMA journal_mode = DELETE;");
     dbContext.Database.ExecuteSqlRaw("PRAGMA synchronous = FULL;");
-
-    Console.WriteLine("✅ Database configured: Journal Mode = DELETE");
-    Console.WriteLine($"✅ Database Location: {dbContext.Database.GetConnectionString()}");
 }
 
 // Configure HTTP request pipeline

@@ -1,6 +1,7 @@
 ﻿using EFCore_Relationships.BLL.Contracts;
 using EFCore_Relationships.DAL.Interfaces;
 using EFCore_Relationships.Models.DTOs;
+using EFCore_Relationships.Models.Entities;
 using EFCore_Relationships.Models.Mappers;
 
 namespace EFCore_Relationships.BLL.Services;
@@ -10,9 +11,9 @@ namespace EFCore_Relationships.BLL.Services;
 /// </summary>
 public class OrderService : IOrderService
 {
-    private readonly IOrderRepository _orderRepository;
+    private readonly IGenericRepository<Order> _orderRepository;
 
-    public OrderService(IOrderRepository orderRepository)
+    public OrderService(IGenericRepository<Order> orderRepository)
     {
         _orderRepository = orderRepository;
     }
@@ -82,27 +83,39 @@ public class OrderService : IOrderService
     }
 
     /// <summary>
-    /// Get orders by status
+    /// Get orders by status (Business logic moved to Service layer)
     /// </summary>
     public async Task<List<OrderDto>> GetOrdersByStatusAsync(string status)
     {
         if (string.IsNullOrWhiteSpace(status))
             throw new ArgumentException("Status cannot be empty");
 
-        var orders = await _orderRepository.GetOrdersByStatusAsync(status);
-        return orders.Select(OrderMapper.ToDto).ToList();
+        // Filtering logic moved to service layer
+        var allOrders = await _orderRepository.GetAllAsync();
+        var filteredOrders = allOrders
+            .Where(o => o.Status == status)
+            .OrderByDescending(o => o.OrderDate)
+            .ToList();
+
+        return filteredOrders.Select(OrderMapper.ToDto).ToList();
     }
 
     /// <summary>
-    /// Get orders by customer email
+    /// Get orders by customer email (Business logic moved to Service layer)
     /// </summary>
     public async Task<List<OrderDto>> GetOrdersByCustomerEmailAsync(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email cannot be empty");
 
-        var orders = await _orderRepository.GetOrdersByCustomerEmailAsync(email);
-        return orders.Select(OrderMapper.ToDto).ToList();
+        // Filtering logic moved to service layer
+        var allOrders = await _orderRepository.GetAllAsync();
+        var filteredOrders = allOrders
+            .Where(o => o.CustomerEmail == email)
+            .OrderByDescending(o => o.OrderDate)
+            .ToList();
+
+        return filteredOrders.Select(OrderMapper.ToDto).ToList();
     }
 
     #endregion

@@ -1,7 +1,9 @@
 ﻿using EFCore_Relationships.BLL.Contracts;
 using EFCore_Relationships.DAL.Interfaces;
 using EFCore_Relationships.Models.DTOs;
+using EFCore_Relationships.Models.Entities;
 using EFCore_Relationships.Models.Mappers;
+using Microsoft.EntityFrameworkCore;
 
 namespace EFCore_Relationships.BLL.Services;
 
@@ -10,9 +12,9 @@ namespace EFCore_Relationships.BLL.Services;
 /// </summary>
 public class ProductService : IProductService
 {
-    private readonly IProductRepository _productRepository;
+    private readonly IGenericRepository<Product> _productRepository;
 
-    public ProductService(IProductRepository productRepository)
+    public ProductService(IGenericRepository<Product> productRepository)
     {
         _productRepository = productRepository;
     }
@@ -34,7 +36,7 @@ public class ProductService : IProductService
     public async Task UpdateProductAsync(ProductDto dto)
     {
         var existing = await _productRepository.GetByIdAsync(dto.ProductId);
-        
+
         if (existing == null)
             throw new KeyNotFoundException($"Product with ID {dto.ProductId} not found");
 
@@ -48,7 +50,7 @@ public class ProductService : IProductService
     public async Task DeleteProductAsync(int id)
     {
         var existing = await _productRepository.GetByIdAsync(id);
-        
+
         if (existing == null)
             throw new KeyNotFoundException($"Product with ID {id} not found");
 
@@ -78,7 +80,7 @@ public class ProductService : IProductService
     }
 
     /// <summary>
-    /// Get products within a specific price range
+    /// Get products within a specific price range (Business logic moved to Service layer)
     /// </summary>
     public async Task<List<ProductDto>> GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
     {
@@ -88,17 +90,28 @@ public class ProductService : IProductService
         if (minPrice > maxPrice)
             throw new ArgumentException("Minimum price cannot be greater than maximum price");
 
-        var products = await _productRepository.GetProductsByPriceRangeAsync(minPrice, maxPrice);
-        return products.Select(ProductMapper.ToDto).ToList();
+        // Filtering logic moved to service layer
+        var allProducts = await _productRepository.GetAllAsync();
+        var filteredProducts = allProducts
+            .Where(p => p.Price >= minPrice && p.Price <= maxPrice)
+            .OrderBy(p => p.Price)
+            .ToList();
+
+        return filteredProducts.Select(ProductMapper.ToDto).ToList();
     }
 
     /// <summary>
-    /// Get all products that are in stock
+    /// Get all products that are in stock (Business logic moved to Service layer)
     /// </summary>
     public async Task<List<ProductDto>> GetProductsInStockAsync()
     {
-        var products = await _productRepository.GetProductsInStockAsync();
-        return products.Select(ProductMapper.ToDto).ToList();
+        // Filtering logic moved to service layer
+        var allProducts = await _productRepository.GetAllAsync();
+        var inStockProducts = allProducts
+            .Where(p => p.Stock > 0)
+            .ToList();
+
+        return inStockProducts.Select(ProductMapper.ToDto).ToList();
     }
 
     #endregion
