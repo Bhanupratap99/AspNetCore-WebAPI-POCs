@@ -33,7 +33,6 @@ using (var scope = app.Services.CreateScope())
     dbContext.Database.ExecuteSqlRaw("PRAGMA journal_mode = DELETE;");
     dbContext.Database.ExecuteSqlRaw("PRAGMA synchronous = FULL;");
 
-    Console.WriteLine("Database configured: Journal Mode = DELETE (no WAL files)");
 }
 
 if (app.Environment.IsDevelopment())
