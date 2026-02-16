@@ -3,6 +3,7 @@ using EFCore_Relationships.DAL.Interfaces;
 using EFCore_Relationships.DAL.Repositories;
 using EFCore_Relationships.BLL.Contracts;
 using EFCore_Relationships.BLL.Services;
+using EFCore_Relationships.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add DbContext (SQLite)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register Unit of Work (DAL - Acts as bridge between BLL and DAL)
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Register Generic Repository (optional - only if you need to inject it directly)
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));

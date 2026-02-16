@@ -1,21 +1,22 @@
 ﻿using EFCore_Relationships.BLL.Contracts;
-using EFCore_Relationships.DAL.Interfaces;
 using EFCore_Relationships.Models.DTOs;
 using EFCore_Relationships.Models.Entities;
 using EFCore_Relationships.Models.Mappers;
+using EFCore_Relationships.UnitOfWork;
 
 namespace EFCore_Relationships.BLL.Services;
 
 /// <summary>
 /// Order service implementation containing business logic
+/// Uses Unit of Work for data access
 /// </summary>
 public class OrderService : IOrderService
 {
-    private readonly IGenericRepository<Order> _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public OrderService(IGenericRepository<Order> orderRepository)
+    public OrderService(IUnitOfWork unitOfWork)
     {
-        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
     }
 
     #region Commands
@@ -30,7 +31,8 @@ public class OrderService : IOrderService
             throw new ArgumentException("Order total amount must be greater than zero");
 
         var entity = OrderMapper.ToEntity(dto);
-        await _orderRepository.AddAsync(entity);
+        await _unitOfWork.Orders.AddAsync(entity);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     /// <summary>
@@ -38,13 +40,14 @@ public class OrderService : IOrderService
     /// </summary>
     public async Task UpdateOrderAsync(OrderDto dto)
     {
-        var existing = await _orderRepository.GetByIdAsync(dto.OrderId);
+        var existing = await _unitOfWork.Orders.GetByIdAsync(dto.OrderId);
 
         if (existing == null)
             throw new KeyNotFoundException($"Order with ID {dto.OrderId} not found");
 
         OrderMapper.UpdateEntity(existing, dto);
-        await _orderRepository.UpdateAsync(existing);
+        await _unitOfWork.Orders.UpdateAsync(existing);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     /// <summary>
@@ -52,12 +55,13 @@ public class OrderService : IOrderService
     /// </summary>
     public async Task DeleteOrderAsync(int id)
     {
-        var existing = await _orderRepository.GetByIdAsync(id);
+        var existing = await _unitOfWork.Orders.GetByIdAsync(id);
 
         if (existing == null)
             throw new KeyNotFoundException($"Order with ID {id} not found");
 
-        await _orderRepository.DeleteAsync(id);
+        await _unitOfWork.Orders.DeleteAsync(id);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     #endregion
@@ -69,7 +73,7 @@ public class OrderService : IOrderService
     /// </summary>
     public async Task<List<OrderDto>> GetAllOrdersAsync()
     {
-        var orders = await _orderRepository.GetAllAsync();
+        var orders = await _unitOfWork.Orders.GetAllAsync();
         return orders.Select(OrderMapper.ToDto).ToList();
     }
 
@@ -78,7 +82,7 @@ public class OrderService : IOrderService
     /// </summary>
     public async Task<OrderDto?> GetOrderByIdAsync(int id)
     {
-        var order = await _orderRepository.GetByIdAsync(id);
+        var order = await _unitOfWork.Orders.GetByIdAsync(id);
         return order != null ? OrderMapper.ToDto(order) : null;
     }
 
@@ -91,7 +95,7 @@ public class OrderService : IOrderService
             throw new ArgumentException("Status cannot be empty");
 
         // Filtering logic moved to service layer
-        var allOrders = await _orderRepository.GetAllAsync();
+        var allOrders = await _unitOfWork.Orders.GetAllAsync();
         var filteredOrders = allOrders
             .Where(o => o.Status == status)
             .OrderByDescending(o => o.OrderDate)
@@ -109,7 +113,7 @@ public class OrderService : IOrderService
             throw new ArgumentException("Email cannot be empty");
 
         // Filtering logic moved to service layer
-        var allOrders = await _orderRepository.GetAllAsync();
+        var allOrders = await _unitOfWork.Orders.GetAllAsync();
         var filteredOrders = allOrders
             .Where(o => o.CustomerEmail == email)
             .OrderByDescending(o => o.OrderDate)

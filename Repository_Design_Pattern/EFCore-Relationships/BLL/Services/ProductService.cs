@@ -1,22 +1,22 @@
 ﻿using EFCore_Relationships.BLL.Contracts;
-using EFCore_Relationships.DAL.Interfaces;
 using EFCore_Relationships.Models.DTOs;
 using EFCore_Relationships.Models.Entities;
 using EFCore_Relationships.Models.Mappers;
-using Microsoft.EntityFrameworkCore;
+using EFCore_Relationships.UnitOfWork;
 
 namespace EFCore_Relationships.BLL.Services;
 
 /// <summary>
 /// Product service implementation containing business logic
+/// Uses Unit of Work for data access
 /// </summary>
 public class ProductService : IProductService
 {
-    private readonly IGenericRepository<Product> _productRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public ProductService(IGenericRepository<Product> productRepository)
+    public ProductService(IUnitOfWork unitOfWork)
     {
-        _productRepository = productRepository;
+        _unitOfWork = unitOfWork;
     }
 
     #region Commands
@@ -27,7 +27,8 @@ public class ProductService : IProductService
     public async Task AddProductAsync(ProductDto dto)
     {
         var entity = ProductMapper.ToEntity(dto);
-        await _productRepository.AddAsync(entity);
+        await _unitOfWork.Products.AddAsync(entity);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     /// <summary>
@@ -35,13 +36,14 @@ public class ProductService : IProductService
     /// </summary>
     public async Task UpdateProductAsync(ProductDto dto)
     {
-        var existing = await _productRepository.GetByIdAsync(dto.ProductId);
+        var existing = await _unitOfWork.Products.GetByIdAsync(dto.ProductId);
 
         if (existing == null)
             throw new KeyNotFoundException($"Product with ID {dto.ProductId} not found");
 
         ProductMapper.UpdateEntity(existing, dto);
-        await _productRepository.UpdateAsync(existing);
+        await _unitOfWork.Products.UpdateAsync(existing);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     /// <summary>
@@ -49,12 +51,13 @@ public class ProductService : IProductService
     /// </summary>
     public async Task DeleteProductAsync(int id)
     {
-        var existing = await _productRepository.GetByIdAsync(id);
+        var existing = await _unitOfWork.Products.GetByIdAsync(id);
 
         if (existing == null)
             throw new KeyNotFoundException($"Product with ID {id} not found");
 
-        await _productRepository.DeleteAsync(id);
+        await _unitOfWork.Products.DeleteAsync(id);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     #endregion
@@ -66,7 +69,7 @@ public class ProductService : IProductService
     /// </summary>
     public async Task<List<ProductDto>> GetAllProductsAsync()
     {
-        var products = await _productRepository.GetAllAsync();
+        var products = await _unitOfWork.Products.GetAllAsync();
         return products.Select(ProductMapper.ToDto).ToList();
     }
 
@@ -75,7 +78,7 @@ public class ProductService : IProductService
     /// </summary>
     public async Task<ProductDto?> GetProductByIdAsync(int id)
     {
-        var product = await _productRepository.GetByIdAsync(id);
+        var product = await _unitOfWork.Products.GetByIdAsync(id);
         return product != null ? ProductMapper.ToDto(product) : null;
     }
 
@@ -91,7 +94,7 @@ public class ProductService : IProductService
             throw new ArgumentException("Minimum price cannot be greater than maximum price");
 
         // Filtering logic moved to service layer
-        var allProducts = await _productRepository.GetAllAsync();
+        var allProducts = await _unitOfWork.Products.GetAllAsync();
         var filteredProducts = allProducts
             .Where(p => p.Price >= minPrice && p.Price <= maxPrice)
             .OrderBy(p => p.Price)
@@ -106,7 +109,7 @@ public class ProductService : IProductService
     public async Task<List<ProductDto>> GetProductsInStockAsync()
     {
         // Filtering logic moved to service layer
-        var allProducts = await _productRepository.GetAllAsync();
+        var allProducts = await _unitOfWork.Products.GetAllAsync();
         var inStockProducts = allProducts
             .Where(p => p.Stock > 0)
             .ToList();
